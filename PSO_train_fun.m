@@ -16,20 +16,28 @@ end
 
 % single swarm
 if ~opts.parallel_cluster
+    if opts.parallel && opts.num_workers ~= 0
+        parpool(opts.num_workers)
+    end
     [x, perf, state_out] = PSO(perf_func,n_vars,opts,opts,false,1,init_data,start_time);
     return
 end
 
 % Parallel swarm
 c = parcluster;
+if opts.num_workers ~= 0
+    num_workers = min(c.NumWorkers,opts.num_workers);
+else
+    num_workers = c.NumWorkers;
+end
 if ~opts.parallel
-    num_PSO = c.NumWorkers;
+    num_PSO = num_workers;
     pool_size = 0;
     fprintf('Running %i parallel swarms\n',num_PSO)
 else
     % Parallel swarms each with a number of workers
     num_PSO = 4;
-    pool_size = (c.NumWorkers / num_PSO) - 1;
+    pool_size = (num_workers / num_PSO) - 1;
     if rem(pool_size,1) ~= 0
         error('Pool size per worker incorect')
     end
