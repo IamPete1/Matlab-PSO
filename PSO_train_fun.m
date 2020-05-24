@@ -8,7 +8,11 @@ else
 end
 
 start_time = tic;
-init_data.start = 'new';
+if ~isfield(opts,'starting_point')
+    init_data.start = 'new';
+else
+    init_data.start = 'starting_point';
+end
 
 % single swarm
 if ~opts.parallel_cluster

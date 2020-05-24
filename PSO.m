@@ -23,7 +23,15 @@ else
 end
 inertia_in = inertia;
 
-if strcmp(init_data.start,'new')
+if strcmp(init_data.start,'starting_point') 
+    % Initialize Population Members
+    particle.Position = repmat(custom_opts.starting_point,options.SwarmSize,1);
+    
+    % Update the Personal Best
+    particle.Best_Cost = inf(options.SwarmSize,1);
+    particle.Global_Best_cost = inf;
+
+elseif strcmp(init_data.start,'new')
     % Start a new swarm
     
     % Initialize Population Members
