@@ -208,6 +208,8 @@ opts.parallel = false; % use Parfor in evaluation, might be faster but code need
 opts.parallel_cluster = false; % Run parallel swarms, see PSO train fun, note they will keep running even if you ctrl+c, use job moniter
 opts.spit_inertia.mult = 0.2; % multiply the main inertia by this value for some percentage of the swarm
 opts.spit_inertia.pct = 0.2; % this percentage of the swarm will use the inerta * spit_inertia.mult
+opts.QDPSO.enable = false;
+opts.QDPSO.g = 2000;
 
 opts.timeout = 10; % time out in hours
 

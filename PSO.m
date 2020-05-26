@@ -23,14 +23,14 @@ else
 end
 inertia_in = inertia;
 
-if strcmp(init_data.start,'starting_point') 
+if strcmp(init_data.start,'starting_point')
     % Initialize Population Members
     particle.Position = repmat(options.starting_point,options.SwarmSize,1);
     
     % Update the Personal Best
     particle.Best_Cost = inf(options.SwarmSize,1);
     particle.Global_Best_cost = inf;
-
+    
 elseif strcmp(init_data.start,'new')
     % Start a new swarm
     
@@ -51,6 +51,10 @@ end
 inertia_mult = ones(options.SwarmSize,1);
 if isfield(options,'spit_inertia')
     inertia_mult(1:round(options.SwarmSize*options.spit_inertia.pct),1) = options.spit_inertia.mult;
+end
+
+if ~isfield(options,'QDPSO')
+    options.QDPSO.enable = false;
 end
 
 % Initialize Velocity
@@ -144,43 +148,61 @@ for n = 1:options.MaxIterations
     %}
     
     
-    
-    % randomly teliport some of the swam
-    rand_regen_no = round(options.SwarmSize*options.random_regen);
-    if rand_regen_no > 0
-        index = randi(options.SwarmSize,rand_regen_no,1);
-        particle.Position(index,:) = particle.Position(index,:) + rand_pop(rand_regen_no,n_vars);
+    if options.QDPSO.enable == false
+        % randomly teliport some of the swam
+        rand_regen_no = round(options.SwarmSize*options.random_regen);
+        if rand_regen_no > 0
+            index = randi(options.SwarmSize,rand_regen_no,1);
+            particle.Position(index,:) = particle.Position(index,:) + rand_pop(rand_regen_no,n_vars);
+        end
+        
+        % update each partical position
+        
+        % Update Velocity
+        temp_global_best_mat = zeros(options.SwarmSize,n_vars);
+        for i = 1:n_vars
+            temp_global_best_mat(:,i) = particle.Global_Best(1,i);
+        end
+        
+        % index all true = standard PSO
+        %index = rand(options.SwarmSize,1) > 0.95;
+        index = true(options.SwarmSize,1);
+        index_size = sum(index);
+        if index_size ~= 0
+            % Random scailing for personal best and global best for each
+            % partical
+            particle.Velocity(index,:) = inertia_mult(index,:) * inertia .* particle.Velocity(index,:) ...
+                + options.personal_best_velo_coef .* rand(index_size,n_vars) .* (particle.Best(index,:) - particle.Position(index,:)) ...
+                + options.global_best_velo_coef   .* rand(index_size,n_vars) .* (temp_global_best_mat(index,:) - particle.Position(index,:));
+        end
+        if index_size ~= options.SwarmSize
+            % Random scailing for personal best and global best for all particales
+            particle.Velocity(~index,:) = inertia_mult(~index,:) * inertia .* particle.Velocity(~index,:) ...
+                + options.personal_best_velo_coef .* rand .* (particle.Best(~index,:) - particle.Position(~index,:)) ...
+                + options.global_best_velo_coef   .* rand .* (temp_global_best_mat(~index,:) - particle.Position(~index,:));
+        end
+        
+        % Update Position
+        particle.Position = particle.Position + particle.Velocity;
+        
+        % Damping Inertia Coefficient
+        inertia = inertia * options.inertia_damping;
+        
+    else
+        % QDPSO algorithm
+        phi_1 = rand(options.SwarmSize,n_vars);
+        phi_2 = rand(options.SwarmSize,n_vars);
+        u = rand(options.SwarmSize,n_vars);
+        
+        p = (phi_1 .* particle.Best + phi_2 .* particle.Global_Best) ./ (phi_1 + phi_2);
+        
+        L = (1/options.QDPSO.g) * abs(particle.Position - p);
+        
+        sign_mult = ones(options.SwarmSize,n_vars);
+        sign_mult(rand(options.SwarmSize,n_vars) > 0.5) = -1;
+        
+        particle.Position = p + sign_mult .* L .* log(1./u);
     end
-    
-    % update each partical position
-    
-    % Update Velocity
-    temp_global_best_mat = zeros(options.SwarmSize,n_vars);
-    for i = 1:n_vars
-        temp_global_best_mat(:,i) = particle.Global_Best(1,i);
-    end
-    
-    % index all true = standard PSO
-    %index = rand(options.SwarmSize,1) > 0.95;
-    index = true(options.SwarmSize,1);
-    index_size = sum(index);
-    if index_size ~= 0
-        % Random scailing for personal best and global best for each
-        % partical
-        particle.Velocity(index,:) = inertia_mult(index,:) * inertia .* particle.Velocity(index,:) ...
-            + options.personal_best_velo_coef .* rand(index_size,n_vars) .* (particle.Best(index,:) - particle.Position(index,:)) ...
-            + options.global_best_velo_coef   .* rand(index_size,n_vars) .* (temp_global_best_mat(index,:) - particle.Position(index,:));
-    end
-    if index_size ~= options.SwarmSize
-        % Random scailing for personal best and global best for all particales
-        particle.Velocity(~index,:) = inertia_mult(~index,:) * inertia .* particle.Velocity(~index,:) ...
-            + options.personal_best_velo_coef .* rand .* (particle.Best(~index,:) - particle.Position(~index,:)) ...
-            + options.global_best_velo_coef   .* rand .* (temp_global_best_mat(~index,:) - particle.Position(~index,:));
-    end
-   
-    % Update Position
-    particle.Position = particle.Position + particle.Velocity;
-    
     
     % Display Iteration Information
     if ~parallel
@@ -200,10 +222,6 @@ for n = 1:options.MaxIterations
             fprintf('%i -Generation %d - %g%s\n',worker_ID,n,particle.Global_Best_cost,msg)
         end
     end
-    
-    
-    % Damping Inertia Coefficient
-    inertia = inertia * options.inertia_damping;
     
     if toc(start_time) > options.timeout
         fprintf('Timed out after %g seconds\n',options.timeout)
