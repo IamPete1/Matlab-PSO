@@ -48,6 +48,11 @@ else
     error('unknown start!')
 end
 
+inertia_mult = ones(options.SwarmSize,1);
+if isfield(options,'spit_inertia')
+    inertia_mult(1:round(options.SwarmSize*options.spit_inertia.pct),1) = options.spit_inertia.mult;
+end
+
 % Initialize Velocity
 particle.Velocity = randn(options.SwarmSize,n_vars) * options.initial_velo;
 
@@ -155,24 +160,23 @@ for n = 1:options.MaxIterations
         temp_global_best_mat(:,i) = particle.Global_Best(1,i);
     end
     
-    % Some random pertibations
     % index all true = standard PSO
-    index = rand(options.SwarmSize,1) > 0.945;
-    %index = ones(options.SwarmSize,1);
+    %index = rand(options.SwarmSize,1) > 0.95;
+    index = true(options.SwarmSize,1);
     index_size = sum(index);
     if index_size ~= 0
-        particle.Velocity(index,:) = inertia * particle.Velocity(index,:) ...
-            + custom_opts.personal_best_velo_coef .* rand(index_size,n_vars) .* (particle.Best(index,:) - particle.Position(index,:)) ...
-            + custom_opts.global_best_velo_coef   .* rand(index_size,n_vars) .* (temp_global_best_mat(index,:) - particle.Position(index,:));
+        % Random scailing for personal best and global best for each
+        % partical
+        particle.Velocity(index,:) = inertia_mult(index,:) * inertia .* particle.Velocity(index,:) ...
+            + options.personal_best_velo_coef .* rand(index_size,n_vars) .* (particle.Best(index,:) - particle.Position(index,:)) ...
+            + options.global_best_velo_coef   .* rand(index_size,n_vars) .* (temp_global_best_mat(index,:) - particle.Position(index,:));
     end
-    
-    temp_rand_1_mat = ones(options.SwarmSize-index_size,n_vars) * rand;
-    temp_rand_2_mat = ones(options.SwarmSize-index_size,n_vars) * rand;
-    
-    particle.Velocity(~index,:) = inertia * particle.Velocity(~index,:) ...
-        + temp_rand_1_mat .* (particle.Best(~index,:) - particle.Position(~index,:)) ...
-        + temp_rand_2_mat .* (temp_global_best_mat(~index,:) - particle.Position(~index,:));
-    
+    if index_size ~= options.SwarmSize
+        % Random scailing for personal best and global best for all particales
+        particle.Velocity(~index,:) = inertia_mult(~index,:) * inertia .* particle.Velocity(~index,:) ...
+            + options.personal_best_velo_coef .* rand .* (particle.Best(~index,:) - particle.Position(~index,:)) ...
+            + options.global_best_velo_coef   .* rand .* (temp_global_best_mat(~index,:) - particle.Position(~index,:));
+    end
    
     % Update Position
     particle.Position = particle.Position + particle.Velocity;
