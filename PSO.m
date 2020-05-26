@@ -1,11 +1,11 @@
-function [x, fval, state] = PSO(perf_func,n_vars,options,custom_opts,parallel,worker_ID,init_data,start_time)
+function [x, fval, state] = PSO(perf_func,n_vars,options,parallel,worker_ID,init_data,start_time)
 
 % reset random number generators, importand for batch parallel
 rng('shuffle');
 
 if parallel
     % Pick a inertia to use
-    num_inertial = numel(custom_opts.inertia);
+    num_inertial = numel(options.inertia);
     if num_inertial ~= 1
         if rem(8,num_inertial) ~= 0
             error('inertia canot be split evenly!')
@@ -14,18 +14,18 @@ if parallel
         while index > num_inertial
             index = index - num_inertial;
         end
-        inertia = custom_opts.inertia(index);
+        inertia = options.inertia(index);
     else
-        inertia = custom_opts.inertia;
+        inertia = options.inertia;
     end
 else
-    inertia = custom_opts.inertia(1);
+    inertia = options.inertia(1);
 end
 inertia_in = inertia;
 
 if strcmp(init_data.start,'starting_point') 
     % Initialize Population Members
-    particle.Position = repmat(custom_opts.starting_point,options.SwarmSize,1);
+    particle.Position = repmat(options.starting_point,options.SwarmSize,1);
     
     % Update the Personal Best
     particle.Best_Cost = inf(options.SwarmSize,1);
@@ -49,20 +49,20 @@ else
 end
 
 % Initialize Velocity
-particle.Velocity = randn(options.SwarmSize,n_vars) * custom_opts.initial_velo;
+particle.Velocity = randn(options.SwarmSize,n_vars) * options.initial_velo;
 
 
 % Main Loop of PSO
 tic;
 stall = 0;
 
-rate = ones(1,custom_opts.sigma_rolling_average_size) * 100;
+rate = ones(1,options.sigma_rolling_average_size) * 100;
 particle.worker_ID = worker_ID;
 
 for n = 1:options.MaxIterations
     
     % evaluate the population
-    if custom_opts.parallel
+    if options.parallel
         pos = particle.Position;
         cost = zeros(options.SwarmSize,1);
         parfor i = 1:options.SwarmSize
@@ -107,7 +107,7 @@ for n = 1:options.MaxIterations
     sigma = mean(rate);
     
     particle.status(n) = 0;
-    if (stall > custom_opts.max_stall || sigma < custom_opts.min_sigma*(1/100)*particle.Global_Best_cost) && n > custom_opts.hold_off_steps
+    if (stall > options.max_stall || sigma < options.min_sigma*(1/100)*particle.Global_Best_cost) && n > options.hold_off_steps
         break; % Stalled, or low sigma give up
     end
     
@@ -141,7 +141,7 @@ for n = 1:options.MaxIterations
     
     
     % randomly teliport some of the swam
-    rand_regen_no = round(options.SwarmSize*custom_opts.random_regen);
+    rand_regen_no = round(options.SwarmSize*options.random_regen);
     if rand_regen_no > 0
         index = randi(options.SwarmSize,rand_regen_no,1);
         particle.Position(index,:) = particle.Position(index,:) + rand_pop(rand_regen_no,n_vars);
@@ -185,7 +185,7 @@ for n = 1:options.MaxIterations
             tic
         end
         %if rem(n,5000) == 0
-        %   custom_opts.live_Plot(net)
+        %   options.live_Plot(net)
         %end
     else
         % only ouput every 250 generations, or if somthing has happend
@@ -199,10 +199,10 @@ for n = 1:options.MaxIterations
     
     
     % Damping Inertia Coefficient
-    inertia = inertia * custom_opts.inertia_damping;
+    inertia = inertia * options.inertia_damping;
     
-    if toc(start_time) > custom_opts.timeout
-        fprintf('Timed out after %g seconds\n',custom_opts.timeout)
+    if toc(start_time) > options.timeout
+        fprintf('Timed out after %g seconds\n',options.timeout)
         break;
     end
     

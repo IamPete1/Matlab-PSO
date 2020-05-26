@@ -19,7 +19,7 @@ if ~opts.parallel_cluster
     if opts.parallel && opts.num_workers ~= 0
         parpool(opts.num_workers)
     end
-    [x, perf, state_out] = PSO(perf_func,n_vars,opts,opts,false,1,init_data,start_time);
+    [x, perf, state_out] = PSO(perf_func,n_vars,opts,false,1,init_data,start_time);
     return
 end
 
@@ -52,7 +52,7 @@ num_runs = 1;
 
 warning('off','all');
 for j = 1:num_PSO
-    job{j} = batch(c,'PSO',3,{perf_func,n_vars,opts,opts,true,j,init_data,start_time},'Pool',pool_size);
+    job{j} = batch(c,'PSO',3,{perf_func,n_vars,opts,true,j,init_data,start_time},'Pool',pool_size);
 end
 
 while true
@@ -133,7 +133,7 @@ while true
             end
             if toc(start_time) < opts.timeout
                 delete(job{j})
-                job{j} = batch(c,'PSO',3,{perf_func,n_vars,opts,opts,true,j,init_data,start_time},'Pool',pool_size);
+                job{j} = batch(c,'PSO',3,{perf_func,n_vars,opts,true,j,init_data,start_time},'Pool',pool_size);
             else
                 done(j) = 2;
             end
