@@ -210,9 +210,9 @@ for n = 1:options.MaxIterations
             fprintf('Generation %d - %.5fs - %g%s\n',n,toc,particle.Global_Best_cost,msg)
             tic
         end
-        %if rem(n,5000) == 0
-        %   options.live_Plot(net)
-        %end
+        if rem(n,50) == 0 && isfield(options,'live_Plot')
+           options.live_Plot(particle.Global_Best)
+        end
     else
         % only ouput every 250 generations, or if somthing has happend
         if rem(n,250) == 0
